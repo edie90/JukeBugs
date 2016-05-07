@@ -1,7 +1,7 @@
 # JukeBugs
 
-  Copyright (C) JukeBugs Team - All Rights Reserved
-  Unauthorized copying of this file, via any medium is strictly prohibited
-  Proprietary and confidential
-  Written by Eonha Park <eonhapark@gmail.com>, May 2016
- 
+* Copyright (C) YoYoDyne Systems, Inc - All Rights Reserved
+ * Unauthorized copying of this file, via any medium is strictly prohibited
+ * Proprietary and confidential
+ * Written by Elmer Fudd <efudd@yoyodyne.com>, September 1943
+ *
