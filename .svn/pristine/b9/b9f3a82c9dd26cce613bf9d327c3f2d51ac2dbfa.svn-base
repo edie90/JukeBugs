@@ -1,0 +1,244 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+  PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+  "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="org.JukeBugs.dao.AdminDAO">
+	<select id="getReportedMusicFeed" resultType="report">
+	SELECT 
+		    r.reportid reportid
+		  , TO_CHAR(reportdate, 'YYYY-MM-DD') reportdate
+		  , r.reportreaded reportreaded
+		  , r.reportupdateended reportupdateended
+		  , rf.musicfeedid reportedItemId
+      	  , m.writemessage reportsubstance
+		FROM reportmusicfeed rf join report r
+		on rf.reportid = r.reportid
+		AND r.reportreaded != 'ended'
+		AND r.reportupdateEnded = 'true'
+	    join musicfeed m
+	    on m.musicfeedid = rf.musicfeedid
+	</select>
+	
+	<select id="getReportedMessage" resultType="report">
+		SELECT 
+		    r.reportid reportid
+		  , TO_CHAR(reportdate, 'YYYY-MM-DD') reportdate
+		  , r.reportreaded reportreaded
+		  , r.reportupdateended reportupdateended
+		  , rm.messageid reportedItemId
+      	  , m.message reportsubstance
+		FROM reportmessage rm JOIN report r
+		ON rm.reportid = r.reportid
+		AND r.reportreaded != 'ended'
+		AND r.reportupdateEnded = 'true'    
+	    JOIN message m 
+	    ON m.messageid = rm.messageid
+	</select>
+	
+	<select id="getReportedSong" resultType="report">
+		SELECT 
+		    r.reportid reportid
+		  , r.reportsubstance reportsubstance
+		  , TO_CHAR(reportdate, 'YYYY-MM-DD') reportdate
+		  , r.reportreaded reportreaded
+		  , r.reportupdateended reportupdateended
+		  , rs.songid reportedItemId
+		FROM reportSong rs, report r
+		WHERE rs.reportid = r.reportid
+		AND r.reportreaded != 'ended'
+		AND r.reportupdateEnded = 'true'
+	</select>
+	<select id="getReportedAlbum" resultType="report">
+		SELECT 
+		    r.reportid reportid
+		  , r.reportsubstance reportsubstance
+		  , TO_CHAR(reportdate, 'YYYY-MM-DD') reportdate
+		  , r.reportreaded reportreaded
+		  , r.reportupdateended reportupdateended
+		  , ra.albumid reportedItemId
+		FROM reportArtistAlbum ra, report r
+		WHERE ra.reportid = r.reportid
+		AND r.reportreaded != 'ended'
+		AND r.reportupdateEnded = 'true'
+	</select>
+	<select id="getReportedArtist" resultType="report">
+		SELECT 
+		    r.reportid reportid
+		  , r.reportsubstance reportsubstance
+		  , TO_CHAR(reportdate, 'YYYY-MM-DD') reportdate
+		  , r.reportreaded reportreaded
+		  , r.reportupdateended reportupdateended
+		  , ra.artistid reportedItemId
+		FROM reportArtist ra, report r
+		WHERE ra.reportid = r.reportid
+		AND r.reportreaded != 'ended'
+		AND r.reportupdateEnded = 'true'
+	</select>
+	
+	<update id="checkRead" parameterType="string">
+		UPDATE report
+			SET reportreaded = 'false'
+			WHERE reportid = #{reportid}
+	</update>
+	<update id="checkEnded" parameterType="string">
+		UPDATE report
+			SET reportreaded = 'ended'
+			WHERE reportid = #{reportid}
+	</update>
+	<update id="setUpdatedEndedAsFalse" parameterType="string">
+		UPDATE report
+			SET reportUpdateEnded = 'false'
+			WHERE reportid = #{reportid}
+	</update>
+	
+	<select id="selectOneReportedSong" parameterType="string" resultType="Song">
+		SELECT 
+		    s.songid songid
+	      , s.songtitle songtitle
+	      , s.albumid albumid
+	      , to_char(s.releasedate, 'YYYY/MM/DD') releasedate
+	      , s.tracknumber tracknumber
+	      , s.writer writer
+	      , s.lyricwriter lyricwriter
+	      , s.source source
+		FROM reportSong rs, report r, song s
+		WHERE rs.reportid = r.reportid
+   		AND rs.songid = s.songid
+		AND r.reportreaded != 'ended'
+		AND r.reportupdateEnded = 'true'
+    	AND rs.reportid = #{reportid}
+	</select>
+	
+	<update id="updateSong" parameterType="Song">
+		UPDATE Song
+			SET songtitle = #{songtitle}
+				, releasedate = TO_DATE(#{releasedate}, 'YYYY-MM-DD')
+				, tracknumber = #{tracknumber}
+				, writer = #{writer}
+				, lyricwriter = #{lyricwriter}
+				, source = #{source}
+		WHERE songid = #{songid}
+	</update>
+	
+	<select id="selectOneReportedAlbum" parameterType="string" resultType="ArtistAlbum">
+		SELECT 
+		   a.albumid albumid
+	     , to_char(a.albumrelease, 'YYYY/MM/DD') albumrelease
+	     , a.albumtitle albumtitle
+	     , a.albumdiscription albumdiscription
+	     , a.albumimgurl albumimgurl
+		FROM reportArtistAlbum ra, report r, Artist_Album a
+		WHERE ra.reportid = r.reportid
+    	AND ra.albumid = a.albumid
+		AND r.reportreaded != 'ended'
+		AND r.reportupdateEnded = 'true'
+    	AND ra.reportid = #{reportid}
+	</select>
+	
+	<update id="updateAlbum" parameterType="ArtistAlbum">
+		UPDATE Artist_Album
+			SET albumrelease = TO_DATE(#{albumrelease}, 'YYYY-MM-DD')
+				, albumtitle = #{albumtitle}
+				, albumdiscription = #{albumdiscription}
+				, albumimgurl = #{albumimgurl}
+		WHERE albumid = #{albumid}
+	</update>
+	
+	<select id="selectOneReportedArtist" parameterType="string" resultType="Artist">
+		SELECT 
+        	a.artistid artistid
+	      , a.artistname artistname
+	      , to_char(a.artistdebut, 'YYYY/MM/DD') artistdebut
+	      , a.artistactive artistactive
+	      , a.artistimgurl artistimgurl
+	      , a.artistposition artistposition
+		FROM reportArtist ra, report r, artist a
+		WHERE ra.reportid = r.reportid
+    	AND ra.artistid = a.artistid
+		AND r.reportreaded != 'ended'
+		AND r.reportupdateEnded = 'true'
+    	AND ra.reportid = #{reportid}
+	</select>
+	
+	<update id="updateArtist" parameterType="Artist">
+		UPDATE Artist
+			SET artistname = #{artistname}
+				, artistdebut = TO_DATE(#{artistdebut}, 'YYYY-MM-DD')
+				, artistactive = #{artistactive}
+				, artistimgurl = #{artistimgurl}
+				, artistposition = #{artistposition}
+		WHERE artistid = #{artistid}
+	</update>
+	
+	
+	<!-- 신곡추가 기능 -->        
+	
+	<!-- <insert id="insertSongInfo" parameterType="Song">
+	insert all into 
+	artist_album 
+	(
+		albumid
+		,albumrelease
+		, albumtitle
+		, albumimgurl
+	) 
+	values 
+	(
+		#{albumid}
+		, sysdate
+		, #{albumtitle}
+		, #{savedfile}
+	)
+	into song 
+	(
+		songid
+		, songtitle
+		, albumid
+		, releasedate
+		, tracknumber
+		, writer
+		, lyricwriter
+		, source
+	)  
+	values 
+	(
+		#{songid}
+		, #{songtitle}
+		, #{albumid}
+		, sysdate
+		, #{tracknumber}
+		, #{writer}
+		, #{lyricwriter}
+		, #{originalfile}
+	) 
+
+	select * from dual
+  </insert>
+  
+  <insert id="insertNewArtist" parameterType="Song">
+	insert into 
+	artist 
+	(
+		artistid
+		, artistname
+		, artistdebut
+		, artistactive
+	) 
+	values 
+	(
+		#{artistid}
+		, #{artist}
+		, sysdate
+		, 'false'
+	)
+  </insert> -->
+  
+  <!-- <select id="artistNameCheckList" parameterType="String" resultType="Artist">
+  	select * from artist where lower(artistname) like '%' || lower(#{artistName}) || '%'
+  </select>
+  
+  <select id="artistNameCheck" parameterType="String" resultType="Artist">
+	select * from artist where lower(artistname) = lower(#{artistName})  
+  </select> -->
+  
+</mapper>

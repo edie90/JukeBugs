@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE configuration
+  PUBLIC "-//mybatis.org//DTD Config 3.0//EN"
+  "http://mybatis.org/dtd/mybatis-3-config.dtd">
+  
+<configuration>
+
+ 	<typeAliases>
+		<typeAlias type="org.JukeBugs.vo.ArtistAlbum" alias="ArtistAlbum"/>
+		<typeAlias type="org.JukeBugs.vo.Song" alias="Song"/>
+		<typeAlias type="org.JukeBugs.vo.Artist" alias="Artist"/>
+		<typeAlias type="org.JukeBugs.vo.Jbuser" alias="Jbuser"/>
+		<typeAlias type="org.JukeBugs.vo.MakeAlbum" alias="MakeAlbum"/>
+		<typeAlias type="org.JukeBugs.vo.MakeAlbumSongs" alias="MakeAlbumSongs"/>
+		<typeAlias type="org.JukeBugs.vo.Log" alias="Log"/>
+		<typeAlias type="org.JukeBugs.vo.Message" alias="message"/>
+      	<typeAlias type="org.JukeBugs.vo.FindFriendsVO" alias="findFriendsVO"/>
+      	<typeAlias type="org.JukeBugs.vo.Friend" alias="friend"/>
+      	<typeAlias type="org.JukeBugs.vo.Musicfeed" alias="musicfeed"/>
+      	<typeAlias type="org.JukeBugs.vo.Like" alias="like"/>
+      	<typeAlias type="org.JukeBugs.vo.Report" alias="report"/>
+      	<typeAlias type="org.JukeBugs.vo.RelLogVO" alias="relLog" />
+	</typeAliases>
+
+<!-- bean에도 써도 되지만 bean에 너무 집중되는 것 같아서 -->	
+<!--   <environments default="development">
+    <environment id="development">
+      <transactionManager type="JDBC"/>
+      <dataSource type="POOLED">
+        <property name="driver" value="${driver}"/>
+        <property name="url" value="${url}"/>
+        <property name="username" value="${username}"/>
+        <property name="password" value="${password}"/>
+      </dataSource>
+    </environment>
+  </environments> -->
+  <mappers>
+    <mapper resource="mappers/MusicMapper.xml"/>
+    <mapper resource="mappers/JbuserMapper.xml"/>
+    <mapper resource="mappers/AdminMapper.xml"/>
+    <mapper resource="mappers/jbMusicMapper.xml"/>
+  </mappers>
+</configuration>

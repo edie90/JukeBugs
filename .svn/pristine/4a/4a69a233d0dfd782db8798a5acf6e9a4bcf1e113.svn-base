@@ -1,0 +1,191 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+  PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+  "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="org.JukeBugs.dao.jbMusicDAO">
+	<select id="getLikeMusicList" parameterType="String" resultType="Song">
+		select so.songid as songid, so.SongTitle as songtitle, 
+		so.AlbumID as albumID, al.AlbumImgUrl as albumimgurl,
+		ar.ArtistName as artist, so.source as source
+		from SONG so, LIKEMUSIC lk, Artist_Album al, HaveSong haso, Artist ar
+		where lk.songid = so.songid and al.AlbumID = so.AlbumID
+		and haso.ArtistID = ar.ArtistID and so.songid = haso.songid
+		and lk.userid = #{userid}
+	</select>
+	<select id="getMakeAlbumList" parameterType="String" resultType = "MakeAlbum">
+		select ma.makealbumid as makealbumid, 
+		ma.MakeAlbumName as MakeAlbumName, ma.MakeAlbumAccess as MakeAlbumAccess, 
+		ma.SAVEDFILE as savedfile,count(mas.songid) as count 
+		from Make_Album ma, Make_Album_Songs mas
+		where userid = #{userid} and ma.makealbumid = mas.makealbumid
+		group by ma.makealbumid, ma.MakeAlbumName,ma.MakeAlbumAccess,ma.SAVEDFILE 
+		order by makealbumid asc
+	</select>
+	
+	<select id = "getMakeAlbumSongs" parameterType="String" resultType="Song">
+		select so.songid as songid, so.SongTitle as songtitle, 
+		so.AlbumID as albumID, al.AlbumImgUrl as albumimgurl,
+		ar.ArtistName as artist, so.source as source
+		from SONG so, Make_Album_Songs mas, Artist_Album al , HaveSong haso, Artist ar
+		where mas.songid = so.songid and al.AlbumID = so.AlbumID 
+		and haso.ArtistID = ar.ArtistID and so.songid = haso.songid
+		and mas.makealbumid = #{makealbumid}
+	</select>
+	
+	<select id="getSongSelectOne" parameterType="String" resultType="Song">
+		select so.songid as songid, so.SongTitle as songtitle, 
+			so.AlbumID as albumID, al.AlbumImgUrl as albumimgurl,
+			ar.ArtistName as artist, so.source as source
+		from 
+			Song so, Artist_Album al, HaveSong haso, Artist ar
+		where
+			al.AlbumID = so.AlbumID and haso.ArtistID = ar.ArtistID 
+			and so.songid = haso.songid
+			and so.songid = #{songid}
+	</select>
+	
+	<update id='updateGenre' parameterType="String">
+		update JB_TAG_ALBUM set tagvalue = #{value}
+	</update>
+
+  	 <insert id="insertRelLog" parameterType="relLog">
+  	 	insert into RELLOG (EndedSong, NextSong)
+  	 	values(#{endedSongId},#{nextSongId})
+  	 </insert>
+  	 
+  	 <select id = "getAlbumSongs" parameterType="String" resultType="Song">
+		select so.songid as songid, so.SongTitle as songtitle, 
+		so.AlbumID as albumID, al.AlbumImgUrl as albumimgurl,
+		ar.ArtistName as artist, so.source as source
+		from SONG so, Artist_Album al , HaveSong haso, Artist ar
+		where al.AlbumID = so.AlbumID 
+		and haso.ArtistID = ar.ArtistID and so.songid = haso.songid
+		and al.AlbumID = #{albumID}
+	</select>
+	
+	<select id ="checkMakeAlbumExits" parameterType="String" resultType="String">
+		select makealbumid from Make_Album where makealbumid = #{makealbumid}
+	</select>
+	
+	<select id="getRankDaySongInfo" resultType="Song">
+		select so.* from song so,(
+			   select so.songid as songid, 
+			   count(*)as cnt,
+			   RANK() OVER (ORDER BY count(*) desc) as rank
+			   from jblog jl, SONG so
+			   where jl.songid = so.songid and
+			   accesslog between sysdate -1 and sysdate
+			   group by so.songid
+			   order by rank asc
+		) rk
+		where so.songid = rk.songid and 30>rk.rank
+		order by rk.rank
+	</select>
+	
+	<select id="getRankMonthSongInfo" resultType="Song">
+		select so.* from song so,(
+			   select so.songid as songid, 
+			   count(*)as cnt,
+			   RANK() OVER (ORDER BY count(*) desc) as rank
+			   from jblog jl, SONG so
+			   where jl.songid = so.songid and
+			   (accesslog between add_months(sysdate, -1) and sysdate)
+			   group by so.songid
+			   order by rank asc
+		) rk
+		where so.songid = rk.songid and 30>rk.rank
+		order by rk.rank
+	</select>
+	
+	<select id="getRankRealTimeSongInfo" parameterType="int" resultType="Song">
+		select so.* from song so,(
+			   select so.songid as songid, 
+			   count(*)as cnt,
+			   RANK() OVER (ORDER BY count(*) desc) as rank
+			   from jblog jl, SONG so
+			   where jl.songid = so.songid and
+			   accesslog between sysdate-#{time}/24 and sysdate
+			   group by so.songid
+			   order by rank asc
+		) rk
+		where so.songid = rk.songid and 30>rk.rank
+		order by rk.rank
+	</select>
+	
+	
+	<insert id="insertMKAlbumSongs" parameterType="list">
+		<foreach collection="list" item="vo" open="INSERT ALL" separator=" " close="SELECT * FROM DUAL">
+		   INTO Make_Album_Songs (makealbumid,songid)
+		   VALUES (#{vo.makealbumid} , #{vo.songid} )
+		</foreach>
+   	</insert>
+   	
+   	<insert id ="insertMKAlbum" parameterType="MakeAlbum">
+   		insert into Make_Album(	
+   			makealbumid,
+   			MakeAlbumName,
+   			MakeAlbumAccess,
+   			userid
+   		) values(
+   			#{makealbumid},
+   			#{makealbumname},
+   			0,
+   			#{userid}
+   		)
+   	</insert>
+   
+   
+   
+   <!-- Delete -->
+	
+	<delete id="deleteMKAlbumSongs" parameterType="String">
+		delete from Make_Album_Songs where makealbumid = #{makealbumid}
+	</delete>
+	
+	<delete id="deleteMKAlbum" parameterType="String">
+		delete from Make_Album where makealbumid = #{makealbumid}
+	</delete>
+	
+	<delete id="deleteTargetMKAlbumSongs" parameterType="map">
+		delete from Make_Album_Songs 
+		where makealbumid = #{makealbumid} and songid = #{songid}
+		
+	</delete>
+	
+
+	 <select id="checkUserActive" parameterType="String" resultType="String">
+	 	select enddate from JBACTIVATE where userid = #{userid}
+		and sysdate between ActiveDate and enddate
+	 </select>
+	 
+	 <insert id="insertActiveUser"	parameterType="String">
+	 	insert into JBACTIVATE (ActiveDate, enddate, userid) 
+		values(sysdate,sysdate+30 , #{userid})
+	 </insert>
+	 
+	 <update id="updateActiveUser"	parameterType="String">
+	 	update JBACTIVATE set enddate = enddate+30 where 
+	    (sysdate between activedate and enddate) 
+	    and userid = #{userid}
+	 </update>
+	 
+	 <insert id="insertLogListen" parameterType="Log">
+	 	insert into JBLOG (UserID,SongID, albumID, accessType)
+	 	select #{userid},#{songid},
+     	albumId, 'listen' from SONG where songId = #{songid}
+	 </insert>
+	 
+	 
+	 <select id="checkAlbumId" parameterType="String" resultType="String">
+	 	select AlbumID from ARTIST_ALBUM where albumId = #{albumid}
+	 </select>
+	 
+	 <select id="checkSongId" parameterType="String" resultType="String">
+	 	select songid from song where songid = #{songid}
+	 </select>
+	 
+	 <select id="checkArtistId" parameterType="String" resultType="String">
+	 	select artistId from artist where artistId = #{artistId}
+	 </select>
+  
+</mapper>

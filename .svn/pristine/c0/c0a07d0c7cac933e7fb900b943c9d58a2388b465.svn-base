@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans.xsd">
+	
+	<!-- Root Context: defines shared resources visible to all other web components -->
+
+<!-- db.properties 설정 -->
+<bean class="org.springframework.beans.factory.config.PropertyPlaceholderConfigurer">
+	<property name="locations">
+		<value>classpath:db.properties</value>
+		<!-- 클래스패스안에 있기때문에 위치를 지정해줌 -->
+	</property>
+</bean>	
+
+<bean id="dataSource" class="org.springframework.jdbc.datasource.DriverManagerDataSource">
+	<property name="driverClassName" value="${driver}" />
+	<property name="url" value="${url}" />
+	<property name="username" value="${user}" />
+	<property name="password" value="${password}" />
+</bean>
+
+<!-- 트랜잭션 -->
+<bean id="transactionManager" class="org.springframework.jdbc.datasource.DataSourceTransactionManager">
+	<property name="dataSource" ref="dataSource"></property>
+</bean>
+
+<bean id="sqlSessionFactory" class="org.mybatis.spring.SqlSessionFactoryBean">
+	<property name="dataSource" ref="dataSource" />
+	<property name="configLocation" value="classpath:mybatis-config.xml" />
+</bean>
+
+<bean id="sqlSession" class="org.mybatis.spring.SqlSessionTemplate">
+	<constructor-arg index="0" name="sqlSessionFactory" ref="sqlSessionFactory"></constructor-arg>
+</bean>
+
+<!-- file upload 관련 bean -->
+<bean name="multipartResolver" class="org.springframework.web.multipart.commons.CommonsMultipartResolver">
+	<property name="maxUploadSize" value="20971520"></property>
+		 					<!-- string이기 때문에 10485760=10MB=10*1024*1024 -->
+</bean>
+
+</beans>

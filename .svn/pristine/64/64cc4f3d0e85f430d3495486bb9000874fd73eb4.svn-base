@@ -1,0 +1,964 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+  PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+  "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="org.JukeBugs.dao.MusicDAO">
+<!-- 매퍼가 인터페이스랑 연동할 것이란 것을 알려주기 위해 이름을 인터페이스와 반드시 일치시킨다 -->
+
+  <select id="artistAlbumSelectOne" parameterType="String" resultType="ArtistAlbum">
+	select * from artist_album where albumtitle = #{content}  
+  </select>
+
+  <select id="artistAlbumSelectList" parameterType="String" resultType="ArtistAlbum" >	<!--선경: 여기 MoiveVO라고 오타났었음요  -->
+    select ar_al.* from 
+    	artist ar, jb_havealbum jb_hal, artist_album ar_al 
+			where 
+			ar.artistid=jb_hal.artistid and 
+			jb_hal.albumid=ar_al.albumid and 
+			replace(lower(ar.artistname),' ','') like '%' || replace(lower(#{content}),' ','') || '%' 
+  </select>
+  
+  <select id="artistAlbumSelectListGroup" parameterType="String" resultType="ArtistAlbum">
+	 select ar_al.* from 
+    	artist ar, jb_havealbum jb_hal, artist_album ar_al 
+			where 
+			ar.artistid=jb_hal.artistid and 
+			jb_hal.albumid=ar_al.albumid and 
+			lower(ar.artistname) = lower(#{content})  
+  </select>
+  
+  <!-- select * from 
+    (select * from artist_album where albumtitle like '%' || #{content} || '%')   
+    where albumtitle != #{content}  -->
+  
+  <!-- <select id="songList" parameterType="String" resultType="Song">
+  	select count(*) from movie_tbl
+  </select> -->
+  
+  
+  <select id="artistSelectOne" parameterType="String" resultType="Artist">
+  	select
+  		artistid 
+  		,artistname
+  		, to_char(artistdebut,'YYYY/MM/DD') artistdebut
+  		, artistbirthday
+  		, artistactive
+  		, artistimgurl
+  		, artistposition  	 from artist where lower(artistname) = lower(#{content})
+  </select>
+  
+  
+  <select id="artistSelectList" parameterType="String" resultType="Artist">
+  	select * from 
+    (select * from artist where lower(artistname) like '%' || lower(#{content}) || '%')   
+    where lower(artistname) != lower(#{content}) 
+  </select>
+  
+  <select id="groupMemberList" parameterType="String" resultType="Artist">
+  	select ar.* 
+  	from artist ar, jb_tag_artist tag_ar, jb_tag tag 
+  	where ar.artistid = tag_ar.artistid 
+  		  and tag.tagvalue = tag_ar.tagvalue 
+  		  and lower(tag.type) = lower('group') 
+  		  and ((replace(lower(tag.tagvalue),' ','')) like '%' || replace(lower(#{content}),' ','') || '%' )
+  	
+  	<!-- select ar.* from artist ar, jb_tag_artist tag_ar, jb_tag tag where 
+	ar.artistid = tag_ar.artistid and tag.tagvalue = tag_ar.tagvalue and 
+	lower(tag.type) = lower('group') and lower(tag.tagvalue) = lower(#{content}) -->
+  </select>
+  
+  <select id="checkGroup" parameterType="String" resultType="String">
+	select type from jb_tag where lower(tagvalue) = lower(#{content})   
+  </select>
+  
+  <select id="songList" parameterType="String" resultType="Song">
+  		SELECT 
+	  		  s.songid as songid
+	  		, s.songtitle as songtitle
+	  		, s.albumId as albumid
+	  		, s.releasedate as releasedate
+	  		, s.tracknumber as tracknumber
+	  		, s.writer as writer
+	  		, s.lyricwriter as lyricwriter
+	  		, s.source as source
+	  		, a.artistName as artist 
+	        , c.cnt as count
+		FROM song s join havesong hs
+	    on s.songid = hs.songId
+	    join artist a 
+	    on hs.artistId = a.artistId
+	    left outer join
+	    (select SongID , count(*) cnt from Likemusic group by SongID) c
+	    on s.songid = c.songid 
+		WHERE 
+		s.albumid = #{albumid}
+		ORDER BY s.tracknumber desc 
+  </select>
+  
+  <select id="searchBasedOnArtistNameSongList" parameterType="String" resultType="Song">
+  	select ar_al.albumtitle 
+		  , ar_al.albumimgurl 
+		  , ar_al.albumid albumid 
+		  , ar.artistname artist 
+		  , ar.artistid artistid 
+		  , ar.artistimgurl artistimgurl 		   
+		  , s.* 
+		  , likecnt.cnt count 
+		     FROM artist ar JOIN havesong hs 
+		     ON ar.artistid = hs.artistid 
+		     JOIN song s 
+		     ON hs.songid = s.songid 
+		     JOIN artist_album ar_al 
+		     ON s.albumid = ar_al.albumid 
+		     LEFT OUTER JOIN (select count(*) cnt, songid from LIKEMUSIC group by songid) likecnt  
+		     ON likecnt.songid = s.songid 
+		     WHERE lower(ar.artistname) like '%' || lower(#{content}) || '%' 
+		     order by albumtitle 
+  	
+  	
+  	<!-- select ar_al.albumtitle, ar_al.albumimgurl, ar_al.albumid albumid, 
+  		   ar.artistname artist, ar.artistid artistid, s.*    
+  	from artist ar, havesong hs, song s, artist_album ar_al 
+	where ar.artistid = hs.artistid and hs.songid = s.songid and 
+		  s.albumid = ar_al.albumid and 
+	      lower(ar.artistname) = lower(#{content})  -->
+  	
+  	<!-- select s.*, ar.artistname artist, ar.artistid artistid  
+  	from song s, havesong hs, artist ar  
+	where ar.artistid = hs.artistid and hs.songid = s.songid and 
+	lower(ar.artistname) = lower(#{content}) -->
+  </select>
+  
+  <select id="getSearchArtistNameLikeList" parameterType="map" resultType="String">
+	  SELECT s.songId, s.songtitle 
+		FROM song s, likeMusic lk, havesong hs, artist ar 
+		WHERE lk.userId = #{userId} 
+		AND s.songId = lk.songId 
+		AND s.songId = hs.songId 
+		AND hs.artistid = ar.artistid 
+		AND lower(ar.artistname) = lower(#{content})
+  </select>
+  
+  <select id="searchBasedOnArtistNameSongListMap" parameterType="hashmap" resultType="Song">
+  	
+  	select row_number() over (order by ar_al.albumtitle asc) rnum
+  		  , ar_al.albumtitle 
+		  , ar_al.albumimgurl 
+		  , ar_al.albumid albumid 
+		  , ar.artistname artist 
+		  , ar.artistid artistid 
+		  , s.*     
+		  , likecnt.cnt count 
+		     FROM artist ar JOIN havesong hs 
+		     ON ar.artistid = hs.artistid 
+		     JOIN song s 
+		     ON hs.songid = s.songid 
+		     JOIN artist_album ar_al 
+		     ON s.albumid = ar_al.albumid 
+		     LEFT OUTER JOIN (select count(*) cnt, songid from LIKEMUSIC group by songid) likecnt  
+		     ON likecnt.songid = s.songid 
+		     WHERE lower(ar.artistname) = lower(#{content})  
+  
+  
+  
+  
+  	<!-- select * from 
+	  	(select row_number() over (order by cnt.likedcnt desc) rnum
+	   		   , ar_al.albumtitle as albumtitle
+	  		   , ar_al.albumimgurl as albumimgurl 
+	  		   , ar.artistname as artist
+	  		   , ar.artistid as artistid
+	  		   , s.*
+	  		   , cnt.likedcnt as count 
+	  	from artist ar, havesong hs, song s, artist_album ar_al,
+	  	(select songid, count(songid) as likedcnt from likemusic 
+	  	group by songid) cnt 
+		where ar.artistid = hs.artistid 
+			and hs.songid = s.songid 
+			and s.albumid = ar_al.albumid 
+			and lower(ar.artistname) = lower(#{content}) 
+			and cnt.songid = s.songid 
+			order by cnt.likedcnt desc)
+			where rnum between #{startRecord} and #{countPerPage} -->
+  	
+  	
+  	
+  	
+  	<!-- select ar_al.albumtitle, ar_al.albumimgurl, ar_al.albumid albumid, 
+  		   ar.artistname artist, ar.artistid artistid, s.*    
+  	from artist ar, havesong hs, song s, artist_album ar_al 
+	where ar.artistid = hs.artistid and hs.songid = s.songid and 
+		  s.albumid = ar_al.albumid and 
+	      lower(ar.artistname) = lower(#{content}) -->
+  </select>
+  
+  <select id="searchBasedOnArtistNameSongListCount" parameterType="String" resultType="int">
+  	select count(s.songid) count 
+  	from artist ar, havesong hs, song s, artist_album ar_al
+	where ar.artistid = hs.artistid and hs.songid = s.songid and 
+		  s.albumid = ar_al.albumid and 
+	      lower(ar.artistname) like '%' || lower(#{content}) || '%' 
+  </select>
+  
+  <select id="searchBasedOnArtistNameSongListCountPage" parameterType="String" resultType="int">
+  	select count(*) 
+		     FROM artist ar JOIN havesong hs 
+		     ON ar.artistid = hs.artistid 
+		     JOIN song s 
+		     ON hs.songid = s.songid 
+		     JOIN artist_album ar_al 
+		     ON s.albumid = ar_al.albumid 
+		     LEFT OUTER JOIN (select count(*) cnt, songid from LIKEMUSIC group by songid) likecnt  
+		     ON likecnt.songid = s.songid 
+		     WHERE lower(ar.artistname) = lower(#{content})  
+		     order by albumtitle 
+  </select>
+  
+  <select id="searchBasedOnSongNameSongList" parameterType="String" resultType="Song">
+	select ar_al.albumtitle
+		  , ar_al.albumimgurl
+		  , ar_al.albumid albumid
+		  , ar.artistname artist
+		  , ar.artistid artistid
+		  , ar.artistimgurl artistimgurl 
+		  , s.*    
+		  , likecnt.cnt count
+		     FROM artist ar JOIN JB_HAVEALBUM jbhv_al
+		     ON ar.artistid = jbhv_al.artistid
+		     JOIN song s
+		     ON jbhv_al.albumId = s.albumId
+		     JOIN artist_album ar_al 
+		     ON s.albumid = ar_al.albumid 
+		     LEFT OUTER JOIN (select count(*) cnt, songid from LIKEMUSIC group by songid) likecnt 
+		     ON likecnt.songid = s.songid
+		     WHERE lower(s.songtitle) like '%' || lower(#{content}) || '%' 
+		     order by albumtitle
+	
+	<!-- select s.*, ar.artistname artist, ar.artistid artistid,	ar_al.albumtitle albumtitle, 
+		   ar_al.albumid albumid  
+	from song s, havesong hs, artist ar, artist_album ar_al, jb_havealbum jb_hal 
+	where s.songid = hs.songid and hs.artistid = ar.artistid and 
+		  ar.artistid = jb_hal.artistid and jb_hal.albumid = ar_al.albumid and 
+		  (lower(s.songtitle) like '%' || lower(#{content}) || '%')
+	select s.*, ar.artistname artist 
+	from song s, havesong hs, artist ar 
+	where s.songid = hs.songid and hs.artistid = ar.artistid and 
+	(lower(s.songtitle) like '%' || lower(#{content}) || '%')  	 -->
+  </select>
+  
+  <select id="getSearchSongNameLikeList" parameterType="map" resultType="String">
+	  SELECT s.songId, s.songtitle 
+		FROM song s, likeMusic lk 
+		WHERE lk.userId = #{userId} 
+		AND s.songId = lk.songId 
+		AND (lower(s.songtitle) like '%' || lower(#{content}) || '%')
+  </select>
+  
+  
+  <select id="searchBasedOnSongNameSongListMap" parameterType="hashmap" resultType="Song">
+  		select row_number() over (order by ar_al.albumtitle asc) rnum
+  		  , ar_al.albumtitle
+		  , ar_al.albumimgurl
+		  , ar_al.albumid albumid
+		  , ar.artistname artist
+		  , ar.artistid artistid
+		  , s.*    
+		  , likecnt.cnt count
+		     FROM artist ar JOIN havesong hs
+		     ON ar.artistid = hs.artistid
+		     JOIN song s
+		     ON hs.songid = s.songid
+		     JOIN artist_album ar_al 
+		     ON s.albumid = ar_al.albumid 
+		     LEFT OUTER JOIN (select count(*) cnt, songid from LIKEMUSIC group by songid) likecnt 
+		     ON likecnt.songid = s.songid
+		     WHERE lower(s.songtitle) like '%' || lower(#{content}) || '%' 
+  		
+  <!-- 	select * from 
+	  	(select row_number() over (order by cnt.likedcnt desc) rnum
+	  		  , ar_al.albumtitle as albumtitle
+	  		  , ar_al.albumimgurl as albumimgurl 
+	  		  , ar.artistname as artist
+	  		  , ar.artistid as artistid
+	  		  , s.*
+	  		  , cnt.likedcnt as count    
+		from artist ar, havesong hs, song s, artist_album ar_al,
+		(select songid, count(songid) as likedcnt from likemusic 
+		group by songid) cnt 
+		where s.songid = hs.songid 
+			  and hs.artistid = ar.artistid 
+			  and s.albumid = ar_al.albumid 
+			  and (lower(s.songtitle) like '%' || lower(#{content}) || '%')
+			  and cnt.songid = s.songid
+			  order by cnt.likedcnt desc)
+			  where rnum between #{startRecord} and #{countPerPage} -->
+  </select>
+  
+  <select id="searchBasedOnSongNameSongListCount" parameterType="String" resultType="int">
+	select count(s.songid) count     
+	from artist ar, havesong hs, song s, artist_album ar_al 
+	where s.songid = hs.songid and hs.artistid = ar.artistid and 
+		  s.albumid = ar_al.albumid and 
+		  (lower(s.songtitle) like '%' || lower(#{content}) || '%') 
+  </select>
+  
+  <select id="searchBasedOnSongNameSongListCountPage" parameterType="String" resultType="int">
+	select count(*) 
+		     FROM artist ar JOIN havesong hs
+		     ON ar.artistid = hs.artistid
+		     JOIN song s
+		     ON hs.songid = s.songid
+		     JOIN artist_album ar_al 
+		     ON s.albumid = ar_al.albumid 
+		     LEFT OUTER JOIN (select count(*) cnt, songid from LIKEMUSIC group by songid) likecnt 
+		     ON likecnt.songid = s.songid 
+		     WHERE lower(s.songtitle) like '%' || lower(#{content}) || '%' 
+		     order by albumtitle
+	
+	
+	
+	
+	
+	<!-- select count(*)   
+		from artist ar, havesong hs, song s, artist_album ar_al,
+		(select songid, count(songid) as likedcnt from likemusic 
+		group by songid) cnt 
+		where s.songid = hs.songid 
+			  and hs.artistid = ar.artistid 
+			  and s.albumid = ar_al.albumid 
+			  and (lower(s.songtitle) like '%' || lower(#{content}) || '%')
+			  and cnt.songid = s.songid
+			  order by cnt.likedcnt desc -->
+  </select>
+  
+  
+  <select id="searchBasedOnAlbumNameSongList" parameterType="String" resultType="Song">
+	select ar_al.albumtitle
+		  , ar_al.albumimgurl
+		  , ar_al.albumid albumid
+		  , ar.artistname artist
+		  , ar.artistid artistid
+		  , ar.artistimgurl artistimgurl 
+		  , s.*    
+		  , likecnt.cnt count
+		     FROM artist ar JOIN havesong hs
+		     ON ar.artistid = hs.artistid
+		     JOIN song s
+		     ON hs.songid = s.songid
+		     JOIN artist_album ar_al 
+		     ON s.albumid = ar_al.albumid 
+		     LEFT OUTER JOIN (select count(*) cnt, songid from LIKEMUSIC group by songid) likecnt 
+		     ON likecnt.songid = s.songid
+		     WHERE lower(ar_al.albumtitle) like '%' || lower(#{content}) || '%' 
+		     order by albumtitle
+	
+	
+	
+	<!-- select ar_al.albumtitle, ar_al.albumimgurl, ar_al.albumid albumid, 
+           ar.artistname artist, ar.artistid artistid, s.*    
+	from song s, artist_album ar_al, jb_havealbum jb_hal, artist ar  
+	where ar_al.albumid = s.albumid and ar_al.albumid = jb_hal.albumid and 
+		  jb_hal.artistid = ar.artistid and 
+		  (lower(ar_al.albumtitle) like '%' || lower(#{content}) || '%') -->
+	
+	<!-- select s.*, ar_al.albumtitle albumtitle, ar_al.albumid albumid, ar.artistname artist, 
+		   ar.artistid artistid 
+	from song s, artist_album ar_al, jb_havealbum jb_hal, artist ar 
+	where ar_al.albumid = s.albumid and  ar_al.albumid = jb_hal.albumid and 
+		  jb_hal.artistid = ar.artistid and 
+		  (lower(ar_al.albumtitle) like '%' || lower(#{content}) || '%')   -->
+  </select>
+  
+  <select id="getSearchAlbumNameLikeList" parameterType="map" resultType="String">
+	  SELECT s.songId, s.songtitle 
+		FROM song s, likeMusic lk, artist_album ar_al 
+		WHERE lk.userId = #{userId} 
+		AND s.songId = lk.songId 
+		AND s.albumid = ar_al.albumid  
+		AND (lower(ar_al.albumtitle) like '%' || lower(#{content}) || '%') 
+		order by albumtitle 
+  </select>
+  
+  
+  <select id="searchBasedOnAlbumNameSongListMap" parameterType="hashmap" resultType="Song">
+		select row_number() over (order by ar_al.albumtitle asc) rnum
+		  , ar_al.albumtitle
+		  , ar_al.albumimgurl
+		  , ar_al.albumid albumid
+		  , ar.artistname artist
+		  , ar.artistid artistid
+		  , s.*    
+		  , likecnt.cnt count
+		     FROM artist ar JOIN havesong hs
+		     ON ar.artistid = hs.artistid
+		     JOIN song s
+		     ON hs.songid = s.songid
+		     JOIN artist_album ar_al 
+		     ON s.albumid = ar_al.albumid 
+		     LEFT OUTER JOIN (select count(*) cnt, songid from LIKEMUSIC group by songid) likecnt 
+		     ON likecnt.songid = s.songid
+		     WHERE lower(ar_al.albumtitle) like '%' || lower(#{content}) || '%' 
+  </select>
+  
+  
+  <select id="searchBasedOnAlbumNameSongListCount" parameterType="String" resultType="int">
+  	select count(s.songid) count     
+	from song s, artist_album ar_al, jb_havealbum jb_hal, artist ar  
+	where ar_al.albumid = s.albumid and ar_al.albumid = jb_hal.albumid and 
+		  jb_hal.artistid = ar.artistid and 
+		  (lower(ar_al.albumtitle) like '%' || lower(#{content}) || '%')
+  	<!-- select count(s.songid) count 
+	from song s, artist_album ar_al, jb_havealbum jb_hal, artist ar 
+	where ar_al.albumid = s.albumid and  ar_al.albumid = jb_hal.albumid and 
+		  jb_hal.artistid = ar.artistid and 
+		  (lower(ar_al.albumtitle) like '%' || lower(#{content}) || '%')  -->  
+  </select>
+  
+  <select id="searchBasedOnAlbumNameSongListCountPage" parameterType="String" resultType="int">
+	select count(*) 
+		     FROM artist ar JOIN havesong hs
+		     ON ar.artistid = hs.artistid
+		     JOIN song s
+		     ON hs.songid = s.songid
+		     JOIN artist_album ar_al 
+		     ON s.albumid = ar_al.albumid 
+		     LEFT OUTER JOIN (select count(*) cnt, songid from LIKEMUSIC group by songid) likecnt 
+		     ON likecnt.songid = s.songid
+		     WHERE lower(ar_al.albumtitle) like '%' || lower(#{content}) || '%' 
+		     order by albumtitle
+	
+	
+	
+	<!-- select count(*)     
+	from song s, artist_album ar_al, jb_havealbum jb_hal, artist ar,
+	(select songid, count(songid) as likedcnt from likemusic 
+	group by songid) cnt  
+	where ar_al.albumid = s.albumid 
+		  and ar_al.albumid = jb_hal.albumid 
+		  and jb_hal.artistid = ar.artistid 
+		  and (lower(ar_al.albumtitle) like '%' || lower(#{content}) || '%')
+		  and cnt.songid = s.songid
+		  order by cnt.likedcnt desc   -->
+  </select>  
+  
+  
+  <select id="artistAlbumSelectOneId" parameterType="String" resultType="ArtistAlbum">
+	  select 
+	  	albumid
+	  	, to_char(albumrelease, 'YYYY/MM/DD') albumrelease
+	  	, albumtitle
+	  	, albumdiscription
+	  	, albumimgurl
+	   from artist_album where albumid = #{albumid}  
+  </select>
+  
+  <select id="songListCount" parameterType="String" resultType="int">
+  	select distinct count(*) from song where albumid = #{albumid}
+  </select>
+  
+  <select id="songUrl" parameterType="String" resultType="Song">
+	select so.SongId as songid, so.SongTitle as songtitle, 
+			so.AlbumID as albumID, al.AlbumImgUrl as albumimgurl,
+			ar.ArtistName as artist, so.source as source
+		from 
+			Song so, Artist_Album al, HaveSong haso, Artist ar
+		where
+			al.AlbumID = so.AlbumID and haso.ArtistID = ar.ArtistID 
+			and so.SongId = haso.SongId
+			and so.SongId = #{songid}
+  </select>
+  
+  <select id="songIdsList" parameterType="String" resultType="Song">
+	select so.songTitle, so.Source, ar.artistName artist 
+	from SONG so, ARTIST ar, HAVESONG ha
+		where ar.artistId = ha.artistId and ha.SongId = so.SongId
+		and ha.songId = #{songId}
+  </select>
+  
+  <select id="selectMakeAlbum" parameterType="String" resultType="MakeAlbum">
+  	select ma.*, (select count(*) from make_album_songs where makealbumid = ma.makealbumid) count
+	from make_album ma
+	where userid = #{loginId}
+  	<!-- select * from make_album where userid = #{loginId} -->
+  </select>
+  
+  <insert id="myAlbumAdd" parameterType="hashmap">
+  	insert into 
+  	make_album 
+  	(
+  		makealbumid
+  		, makealbumname
+  		, makealbumaccess
+  		, savedfile
+  		, originalfile
+  		, userid
+  	) 
+  	values 
+  	(
+  		#{songTitleName}
+  		, #{title}
+  		, 0
+  		, #{savedFileName}
+  		, #{originalFileName}
+  		, #{loginId}
+  	)
+  </insert>
+  
+  <insert id="makeAlbumSong" parameterType="hashmap">
+	insert into 
+	make_album_songs 
+	(
+		makealbumid
+		, songid
+	)  
+	values 
+	(
+		#{songTitleName}
+		, #{songId}
+	)
+  </insert>
+  
+  <delete id="makeAlbumDelete" parameterType="hashmap">
+	delete from make_album where makealbumid = #{songTitleName}
+  </delete>
+  
+  <delete id="makeAlbumSongsDelete" parameterType="hashmap">
+  	delete from make_album_songs where makealbumid = #{songTitleName}
+  </delete>
+  
+  <insert id="makeAlbumsongList" parameterType="MakeAlbumSongs">
+  	insert into 
+  	make_album_songs 
+  	(
+  		makealbumid
+  		, songid
+  	) 
+  	values 
+  	(
+  		#{makealbumid}
+  		, #{songid}
+  	)
+  </insert>
+  
+  <insert id="makeAlbumsongOne" parameterType="hashmap">
+	insert into 
+	make_album_songs 
+	(
+  		makealbumid
+  		, songid
+  	) 
+  	values 
+  	(
+  		#{songTitleName}
+  		, #{songIds}
+  	)
+  </insert>
+  
+  <insert id="insertSongInfo" parameterType="Song">
+	insert all into 
+	artist_album 
+	(
+		albumid
+		,albumrelease
+		, albumtitle
+		, albumimgurl
+	) 
+	values 
+	(
+		#{albumid}
+		, sysdate
+		, #{albumtitle}
+		, #{savedfile}
+	)
+	into song 
+	(
+		songid
+		, songtitle
+		, albumid
+		, releasedate
+		, tracknumber
+		, writer
+		, lyricwriter
+		, source
+	)  
+	values 
+	(
+		#{songid}
+		, #{songtitle}
+		, #{albumid}
+		, sysdate
+		, #{tracknumber}
+		, #{writer}
+		, #{lyricwriter}
+		, #{originalfile}
+	) 
+
+	select * from dual
+  </insert>
+  
+  <insert id="insertNewArtist" parameterType="Song">
+	insert into 
+	artist 
+	(
+		artistid
+		, artistname
+		, artistdebut
+		, artistactive
+	) 
+	values 
+	(
+		#{artistid}
+		, #{artist}
+		, sysdate
+		, 'false'
+	)
+  </insert>
+  
+  <select id="artistNameCheckList" parameterType="String" resultType="Artist">
+  	select * from artist where lower(artistname) like '%' || lower(#{artistName}) || '%'
+  </select>
+  
+  <select id="artistNameCheck" parameterType="String" resultType="Artist">
+	select * from artist where lower(artistname) = lower(#{artistName})  
+  </select>
+  
+  
+<!--   <select id="selectLogInfo" parameterType="String" resultType="Log">
+	select s.songtitle
+			, s.releasedate
+			, s.albumid
+			, s.source
+			, jbl.userid
+			, jbl.songid
+			, jbl.makealbumid
+			, to_char(jbl.accesslog, 'YYYY/MM/DD') accesslog
+			, jbl.accesstype
+			, ar.artistname
+			, ar.artistid
+			, ar.artistimgurl
+			, ar_al.albumtitle
+			, ar_al.albumimgurl 
+	from jblog jbl, song s, havesong hs, artist ar, artist_album ar_al 
+	where jbl.songid = s.songid and s.songid = hs.songid and hs.artistid = ar.artistid 
+		  and s.albumid = ar_al.albumid and jbl.userid = #{loginId}
+  </select> -->
+  
+  <select id="selectLogCount" parameterType="String" resultType="int">
+	select count(*)
+	from jblog jbl, song s, havesong hs, artist ar, artist_album ar_al 
+	where jbl.songid = s.songid and s.songid = hs.songid and hs.artistid = ar.artistid 
+		  and s.albumid = ar_al.albumid and jbl.userid = #{loginId}   
+  </select>
+  
+  <!-- 카운트 -->	
+	
+
+	<!-- 리스트 sql -->
+	
+	<select id="selectLogList" parameterType="hashmap" resultType="Log">
+		select row_number() over (order by accesslog desc) rnum
+			, s.songtitle
+			, s.releasedate
+			, s.source
+			, s.albumid
+			, jbl.userid
+			, jbl.songid
+			, to_char(jbl.accesslog, 'YYYY/MM/DD') accesslog
+			, jbl.accesstype
+			, ar.artistname
+			, ar.artistid
+			, ar.artistimgurl
+			, ar_al.albumtitle
+			, ar_al.albumimgurl 
+	from jblog jbl, song s, havesong hs, artist ar, artist_album ar_al 
+	where jbl.songid = s.songid and s.songid = hs.songid and hs.artistid = ar.artistid 
+		  and s.albumid = ar_al.albumid and jbl.userid = #{loginId} 
+		  
+	</select>
+	
+	
+	  <!-- LikeMusic 부분 -->
+  <insert id="insertLikeMusic" parameterType="map">
+  		INSERT INTO likeMusic(
+  			  userid
+  			, songid	
+  		)VALUES(
+  			  #{userId}
+  			, #{songId}
+  		)
+  </insert>
+  
+  <delete id="deleteLikeMusic" parameterType="map">
+  	DELETE FROM likeMusic
+  	WHERE userId = #{userId} 
+  	AND songId = #{songId}
+  </delete>
+  
+  <select id="getLikeList" parameterType="map" resultType="String">
+  	SELECT s.songId, s.songtitle
+		FROM song s, likeMusic lk
+		WHERE lk.userId = #{userId}
+		AND s.songId = lk.songId
+		AND s.albumId = #{albumId}
+  </select>
+  
+  <select id="getUserLikes" parameterType="map" resultType="Song">
+  	SELECT * FROM
+		(SELECT rownum rnum
+		      , lk.userId
+		  		, lk.songId songid
+		  		, s.songtitle songtitle
+		  		, s.albumId albumid
+		  		, s.releaseDate releasedate
+		  		, s.trackNumber tracknumber
+		  		, s.writer writer
+		  		, s.lyricwriter lyricwriter
+		  		, s.source source
+		  		, a.artistName artist
+			FROM likeMusic lk, song s, artist a, havesong hs
+			WHERE s.songId = lk.songId
+			AND hs.artistId = a.artistId
+			AND hs.songId = s.songId
+			AND userId = #{userId})
+  		WHERE rnum BETWEEN #{startRecord} AND #{startRecord} + #{countPerPage}
+  </select>
+  
+  <select id="getUserLikesCount" parameterType="string" resultType="int">
+  		SELECT count(*)
+		FROM likeMusic 
+		WHERE userId = #{userId}
+  </select>
+  
+  <select id="selectSong" parameterType="string" resultType="Song">
+  	SELECT * FROM song
+  	WHERE songId = #{songId}
+  </select>
+  
+  <select id="countLikeSong" parameterType="string" resultType="like">
+  	SELECT songId FROM likeMusic
+	WHERE songid = #{songId}
+  </select>
+  
+  <select id="selectLikeCount" parameterType="String" resultType="int">
+	select count(*) from likemusic 
+	where songid = #{songId}  
+  </select>
+  
+  <!-- 신고 기능 -->
+  <insert id="insertReportMusicFeed" parameterType="map">
+  		INSERT ALL
+			INTO report (
+			  reportId
+			  , reportsubstance
+			  , reportdate
+			  , reportreaded
+			  , reportupdateended
+			)values(
+			  report_seq.nextval
+			  , 'ReportMusicFeed'
+			  , sysdate
+			  , 'true'                           
+			  , 'true'                          
+			)
+			INTO reportMusicfeed (
+			  reportid
+			  , musicfeedid
+			)values(
+			  report_seq.currval
+			  , #{musicfeedid}
+			)
+			SELECT * FROM dual
+  </insert>
+  <insert id="insertReportMessage" parameterType="map">
+  		INSERT ALL
+			INTO report (
+			  reportId
+			  , reportsubstance
+			  , reportdate
+			  , reportreaded
+			  , reportupdateended
+			)values(
+			  report_seq.nextval
+			  , 'ReportMessage'
+			  , sysdate
+			  , 'true'                           
+			  , 'true'                          
+			)
+			INTO reportMessage (
+			  reportid
+			  , messageid
+			)values(
+			  report_seq.currval
+			  , #{messageid}
+			)
+			SELECT * FROM dual
+  </insert>
+  <insert id="insertReportSong" parameterType="map">
+  		INSERT ALL
+			INTO report (
+			  reportId
+			  , reportsubstance
+			  , reportdate
+			  , reportreaded
+			  , reportupdateended
+			)values(
+			  report_seq.nextval
+			  , #{reason}
+			  , sysdate
+			  , 'true'                           
+			  , 'true'                          
+			)
+			INTO reportSong (
+			  reportid
+			  , songid
+			)values(
+			  report_seq.currval
+			  , #{songid}
+			)
+			SELECT * FROM dual
+  </insert>
+  <insert id="insertReportAlbum" parameterType="map">
+  		INSERT ALL
+			INTO report (
+			  reportId
+			  , reportsubstance
+			  , reportdate
+			  , reportreaded
+			  , reportupdateended
+			)values(
+			  report_seq.nextval
+			  , #{reason}
+			  , sysdate
+			  , 'true'                           
+			  , 'true'                          
+			)
+			INTO reportArtistAlbum (
+			  reportid
+			  , albumid
+			)values(
+			  report_seq.currval
+			  , #{albumid}
+			)
+			SELECT * FROM dual
+  </insert>
+  <insert id="insertReportArtist" parameterType="map">
+  		INSERT ALL
+			INTO report (
+			  reportId
+			  , reportsubstance
+			  , reportdate
+			  , reportreaded
+			  , reportupdateended
+			)values(
+			  report_seq.nextval
+			  , #{reason}
+			  , sysdate
+			  , 'true'                           
+			  , 'true'                          
+			)
+			INTO reportArtist (
+			  reportid
+			  , artistid
+			)values(
+			  report_seq.currval
+			  , #{artistid}
+			)
+			SELECT * FROM dual
+  </insert>
+  
+  
+  <!-- 여기까지 장르부분 ***************************** -->
+  
+  	<select id="genreList" resultType="string">
+  
+ 	 select tagvalue from jb_tag where type = 'genre'
+  
+  	</select> 
+  
+  	
+	<select id="getTotalGenre" resultType="int" parameterType="string">
+
+	select count(*) from (select aa.albumid, aa.albumrelease,
+	aa.albumtitle, aa.albumdiscription,
+	aa.albumimgurl, jl.tagvalue
+	from ARTIST_ALBUM aa, JB_TAG_ALBUM jl, JB_HAVEALBUM jhal,
+	ARTIST art
+	where aa.albumid = jl.albumid
+	and jhal.albumId = aa.albumId and art.artistId = jhal.artistId
+	and jl.tagvalue = #{tagvalue}
+	order by aa.albumid)
+  	
+  	</select>
+  	
+   	<select id="getTotal" resultType="int">
+  	
+  	select count(*) from artist_album
+  	
+  	</select>
+  	
+  	
+ 	<select id="showAllGenre" parameterType="hashmap" resultType="ArtistAlbum">  	 
+		select 
+			*      
+	   	from 
+	      (select 
+		      art.ArtistName as artistName,
+		      al.albumid, 
+		      al.albumtitle, 
+		      al.albumrelease, 
+		      al.albumdiscription, 
+		      al.albumimgurl,
+		      jl.tagvalue,
+		      row_number() over(order by albumtitle desc) rnum 
+		      from ARTIST_ALBUM al,
+	      		   JB_TAG_ALBUM jl, 
+	      		   JB_HAVEALBUM jb_hal, 
+	      		   ARTIST art
+			  where  
+			  		jb_hal.albumId = al.albumId 
+			  		and jb_hal.artistId = art.artistId
+			  		and al.albumid = jl.albumid 
+					tagvalue = #{tagvalue}  
+	      ) 
+   <if test="currentPage == 1">
+   		and rnum between #{startRecord} and #{countPerPage} + 1  
+   </if>
+   <if test="currentPage != 1">
+  		and rnum between #{startRecord} and #{startRecord} + #{countPerPage} -1 
+   </if> 
+   order by rnum
+  	
+  	</select> 
+  	 
+  
+ 	<select id="showAll" parameterType="hashmap" resultType="ArtistAlbum">  	 
+	
+	select 
+		row_number() over (order by albumtitle desc) rnum, 
+		art.artistName,
+	  	aral.albumid, 
+		aral.albumtitle, 
+		to_char(aral.albumrelease, 'YYYY/MM/DD') albumrelease, 
+		aral.albumdiscription, 
+		aral.albumimgurl 
+	from 
+		artist_album aral, JB_HAVEALBUM jbhal, ARTIST art
+	where
+		aral.albumId = jbhal.albumId and art.artistId = jbhal.artistId
+	order by aral.albumtitle
+  	</select>
+  	
+  	<!-- ******************************************* 여기까지 장르부분 -->
+  	
+  	<insert id="insertHaveSongs" parameterType="map">
+  		insert into HAVESONG (ArtistID, SongId)
+  		values(#{artistid}, #{songid})
+  	</insert>
+  	
+  	<insert id="insertHaveAlbum" parameterType="map">
+  		insert into JB_HAVEALBUM (AlbumID, ArtistID)
+  		values(#{albumid}, #{artistid})
+  	</insert>
+  
+  
+</mapper>

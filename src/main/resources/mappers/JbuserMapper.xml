@@ -1,0 +1,374 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+  PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+  "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="org.JukeBugs.dao.JbuserDAO">
+<!-- 매퍼가 인터페이스랑 연동할 것이란 것을 알려주기 위해 이름을 인터페이스와 반드시 일치시킨다 -->
+  
+  
+     <insert id="insert" parameterType="Jbuser">
+     insert into jbuser
+     (
+     userid
+     , userpassword
+     , username
+     , usernick
+     , userlike1
+     , userlike2
+     , userlike3
+     , userquestion
+     , useranswer
+     <if test="userprofileimgurl != null">
+     , userprofileimgurl
+     </if>
+     , userillegal
+     )
+     values
+     (
+     #{userid}
+     , #{userpassword}
+     , #{username}
+     , #{usernick}
+     , #{userlike1}
+     , #{userlike2}
+     , #{userlike3}
+     , #{userquestion}
+     , #{useranswer}
+     <if test="userprofileimgurl != null">
+     , #{userprofileimgurl}
+     </if>
+     , #{userillegal}
+     )
+  </insert> 
+  
+  <select id="selectOne" parameterType="string" resultType="Jbuser">
+      
+      select * from jbuser where userid = #{userid}
+      
+  </select>
+  
+  	<select id="showAll" parameterType="hashmap" resultType="ArtistAlbum">  	 
+		select * from 
+		(select aa.*, rownum rnum from
+		 (select albumid, albumtitle, albumrelease, albumdiscription, albumimgurl from artist_album order by albumrelease desc)aa)	
+		 <![CDATA[where rnum>=#{startPageGroup} and rnum<=#{endPageGroup}]]>
+  	</select>
+  	
+
+  
+  
+  <!-- Message 관련 -->
+  <insert id="insertMessage" parameterType="message">
+  	INSERT INTO message (
+  		  messageid
+  		, message
+  		, senddate
+  		, sendId
+  		, request_Id
+  	)VALUES(
+  		  #{sendidjbuser} || TO_CHAR(systimestamp, 'yyyymmddhh24missff3')
+  		, #{message}
+  		, sysdate
+  		, #{sendidjbuser}
+  		, #{requestIdjbuser}
+  	)
+  </insert>
+  
+  <select id="getInboxTotal" parameterType="string" resultType="int">
+  		SELECT 
+  			count(*)
+		 FROM message
+  		WHERE request_id = #{requestId}
+  		AND messageid NOT IN (SELECT rm.messageid 
+  											FROM reportMessage rm, report rt 
+  											WHERE rm.reportid = rt.reportid 
+  											AND rt.reportupdateended != 'true')
+  		ORDER BY senddate DESC
+  </select>
+  
+  <select id="getInboxList" parameterType="map" resultType="message">
+  		SELECT * FROM
+			(SELECT row_number() over (ORDER BY senddate DESC) rnum
+						, messageid
+						, message
+						, senddate
+						, sendid as sendidjbuser
+						, request_id as requestIdjbuser
+					FROM message
+			  		WHERE request_id = 'a1'
+			  		AND messageid NOT IN (SELECT rm.messageid 
+			  											FROM reportMessage rm, report rt 
+			  											WHERE rm.reportid = rt.reportid 
+			  											AND rt.reportupdateended != 'true'))
+      	WHERE rnum BETWEEN #{startRecord} AND #{startRecord} + #{countPerPage}
+      
+  </select>
+  
+  <select id="getSentTotal" parameterType="string" resultType="int">
+		SELECT count(*)
+		      FROM message
+		 WHERE sendid = #{loggedInId}
+  </select>
+  
+  <select id="getSentList" parameterType="map" resultType="message">
+  		SELECT * FROM
+		  (SELECT row_number() over (ORDER BY senddate DESC) rnum
+		        , messageid
+		        , message
+		        , senddate
+		        , sendid as sendidjbuser
+		        , request_id as requestIdjbuser
+		      FROM message
+		    		WHERE sendid = #{loginId})
+		WHERE rnum BETWEEN #{startRecord} AND #{startRecord} + #{countPerPage}
+  </select>
+  
+  <delete id="deleteMessage" parameterType="string">
+  		DELETE FROM message
+  		WHERE messageid = #{messageid}
+  </delete>
+  
+  <select id="getMessageById" parameterType="string" resultType="message">
+  	SELECT
+  		  messageid
+  		, message
+  		, senddate
+  		, sendid as sendidjbuser
+  		, request_id as requestIdjbuser
+  	FROM message
+  	WHERE messageid = #{messageid}
+  </select>
+  
+  
+  <!-- Friend 관련 -->
+  <select id="recommendFriends" parameterType="string" resultType="findFriendsVO">
+  		SELECT 
+  			  lk.userId recomUserId
+  			, count(lk.songId) cnt
+  			, us.UserNick recomUserNick
+  			, count(lk.songId) / (SELECT count(songId)
+  												FROM likeMusic lk2 WHERE lk2.userId = #{loggedInId})*100 compatibility
+  		FROM likeMusic lk, Jbuser us
+  		WHERE lk.songId IN (SELECT songId FROM likeMusic WHERE userId = #{loggedInId})
+  		AND lk.userId = us.UserId AND lk.userId != #{loggedInId}
+  		AND lk.userId NOT IN (SELECT requestId FROM friend WHERE userId = #{loggedInId})
+  		GROUP BY lk.userId, us.userNick
+  	<!-- 	ORDER BY compatibility DESC	 -->
+  </select>  
+  
+  <insert id="friendRequest" parameterType="friend">
+  		INSERT INTO friend(
+  			  userId			<!-- 친구신청한 유저 -->
+  			, requestId		<!-- 요청받은 유저 -->
+  		)VALUES(
+  			  #{userId}
+  			, #{requestId}
+  		)
+  </insert>
+  
+  <delete id="deleteFollower" parameterType="map">
+  		DELETE FROM friend
+  		WHERE requestId = #{requestId}
+  		AND userId = #{userId}
+  </delete>
+  
+  <select id="getFollowers" parameterType="string" resultType="friend">
+  		SELECT 
+  			  lk.userId userId
+  			, us.userNick userNick
+  			, count(lk.songId)/(select count(songId) 
+						from LIKEMUSIC lk2 where lk2.UserId = #{requestId})*100 compatibility
+		FROM LIKEMUSIC lk, JBUSER us
+		WHERE lk.songId in (select songId from LIKEMUSIC where UserId = #{requestId})
+		AND lk.userId = us.Userid and lk.userId != #{requestId}
+		AND lk.userId IN (SELECT userId FROM friend WHERE requestId = #{requestId})
+		group by lk.userId, us.userNick
+  		<!-- SELECT userId FROM friend
+  		WHERE requestId = #{requestId} -->
+  </select>
+  
+  <select id="getFollowing" parameterType="string" resultType="friend">
+  		SELECT 
+	  		  lk.userId requestId
+	  		, us.userNick userNick
+	  		, count(lk.songId)/(select count(songId) 
+								FROM LIKEMUSIC lk2 where lk2.UserId = #{userId})*100 compatibility
+		FROM LIKEMUSIC lk, JBUSER us
+		WHERE lk.songId in (select songId from LIKEMUSIC where UserId = #{userId})
+		AND lk.userId = us.Userid and lk.userId != #{userId}
+		AND lk.userId IN (SELECT requestId FROM friend WHERE userId = #{userId})
+		group by lk.userId, us.userNick
+  		<!-- SELECT * FROM friend
+  		WHERE userId = #{userId} -->
+  </select>
+  
+  <select id="checkFollowBack" parameterType="string" resultType="string">
+  		SELECT f1.userid userId 
+  		FROM friend f1 JOIN friend f2
+  		ON f1.requestId = f2.userID AND f1.userID = f2.requestID
+  		WHERE f1.requestID = #{userId}
+  </select>
+  
+  <select id="checkFollowBackOther" parameterType="map" resultType="string">
+  		SELECT userid
+		FROM friend
+		WHERE userid IN (SELECT f1.userid userId 
+		  		FROM friend f1 JOIN friend f2
+		  		ON f1.requestId = f2.userID AND f1.userID = f2.requestID
+		  		WHERE f1.requestID = #{loggedInId})
+		AND userid = #{otherUserId}
+		AND requestId = #{loggedInId}
+  </select>
+  
+  <select id="checkFollowYou" parameterType="map" resultType="string">
+  		SELECT userid
+		FROM friend
+		WHERE userid = #{otherUserId}
+		AND requestId = #{loggedInId} 
+  </select>
+  
+  <select id="compatibilityOther" parameterType="map" resultType="friend">
+		SELECT 
+			  lk.userId
+			, count(lk.songId)/(select count(songId) 
+							from LIKEMUSIC lk2 where lk2.UserId = #{loggedInId})*100 compatibility
+		FROM LIKEMUSIC lk, JBUSER us
+		WHERE lk.songId in (select songId from LIKEMUSIC where UserId = #{loggedInId})
+		AND lk.userId = #{otherUserId}
+		AND lk.userId = us.userId
+		GROUP BY lk.userId
+  </select>
+
+<!-- MusicFeed 관련 -->
+	<insert id="insertMusicFeed" parameterType="musicfeed">
+		INSERT INTO MusicFeed(
+			  musicFeedId
+			, writeDate
+			, writeMessage
+			, musicFeedTitle
+			, userId
+		)VALUES(
+			  #{writerUser} || TO_CHAR(systimestamp, 'yyyymmddhh24missff3')
+			, sysdate
+			, #{writemessage}
+		<if test="musicfeedtitle == null">
+			, 'Message'
+		</if>
+		<if test="musicfeedtitle != null">
+			, #{musicfeedtitle}
+		</if>
+			, #{writerUser}
+		)
+	</insert>
+	
+	<select id="getMusicFeed" parameterType="string" resultType="musicfeed">
+		SELECT 
+			  musicFeedID musicfeedid
+			, writedate writedate
+			, writemessage writemessage
+			, musicfeedtitle musicfeedtitle
+			, userid writerUser
+		FROM musicfeed
+		WHERE userid = #{writerUser}
+		OR userId IN (SELECT requestId FROM friend WHERE userId =#{q=writerUser})
+		 AND musicfeedid NOT IN (SELECT rmf.musicfeedid 
+												FROM reportmusicfeed rmf, report rt 
+												WHERE rmf.reportId = rt.reportid 
+												AND rt.reportupdateended != 'true')
+		ORDER BY writedate DESC
+	</select>
+	
+	<delete id="deleteMusicFeed" parameterType="string">
+		DELETE FROM musicfeed
+		WHERE musicfeedid = #{musicfeedid}
+	</delete>
+	
+	<select id="getMusicFeedById" parameterType="string" resultType="musicfeed">
+		SELECT 
+			musicFeedID musicfeedid
+			, writedate writedate
+			, writemessage writemessage
+			, musicfeedtitle musicfeedtitle
+			, userid writerUser
+		FROM musicfeed
+		WHERE musicfeedid = #{musicfeedid}
+	</select>
+	
+	<!-- main 화면 ranking or recommendation -->
+	<select id="getRankingSong" resultType="Song">
+		select so.*, rownum as ranking, al.AlbumImgUrl as albumimgurl 
+		from SONG so , ARTIST_ALBUM al where
+		so.songId in (
+		select nextSong as songId from (
+		select RANK() OVER (ORDER BY count(*) desc) as rank, nextSong from RELLOG where endedSong in (select songId from (
+		select count(*) as accessCount, jl.songId as songId , 
+		RANK() OVER (ORDER BY count(*) desc) as rank
+		from JBLOG jl, SONG so
+		where jl.songId = so.songId
+		group by jl.songId
+		)where 10>rank )
+		group by nextSong
+		) where 18>rank
+		)and 18>rownum  and al.albumID = so.AlbumID
+	</select>
+	
+	<select id="getRankingAlbum" resultType="ArtistAlbum">
+		select 
+			  albumid
+			, albumrelease
+			, albumtitle
+			, artistname
+			, albumimgurl 
+			, rnum ranking
+		from (select row_number() over (order by cnt desc) rnum, 
+	      		rank.cnt, al.*, ar.artistname as artistname
+	      		from(select count(*) as cnt, albumId from JBLOG 
+	         			group by albumId) 
+	         	rank, ARTIST_ALBUM al,ARTIST ar, JB_HAVEALBUM jhal
+	      where al.albumId = rank.albumId and ar.artistId = jhal.artistId
+	      and al.albumId = jhal.albumId)
+	    where rnum &lt; 21
+	</select>
+	
+	<select id="getAlbumImgUrl" parameterType="string" resultType="string">
+		SELECT albumimgurl FROM Artist_album
+		WHERE albumid = #{albumid}
+	</select>
+	
+	<select id="getRecommendationSong" parameterType="string" resultType="Song">
+		select so.*, rownum as ranking, al.AlbumImgUrl as albumimgurl 
+		from SONG so , ARTIST_ALBUM al where
+		so.songId in (
+		select nextSong as songId from (
+		select RANK() OVER (ORDER BY count(*) desc) as rank, nextSong from RELLOG where endedSong in (select songId from (
+		select count(*) as accessCount, jl.songId as songId , 
+		RANK() OVER (ORDER BY count(*) desc) as rank
+		from JBLOG jl, SONG so
+		where jl.songId = so.songId AND userid = #{userid}
+		group by jl.songId
+		)where 10>rank )
+		group by nextSong
+		) where 18>rank
+		)and 18>rownum  and al.albumID = so.AlbumID
+	</select>
+	
+	<select id="getRecommendationAlbum" parameterType="string" resultType="ArtistAlbum">
+		select 
+			  albumid
+			, albumrelease
+			, albumtitle
+			, artistname
+			, albumimgurl
+			, rnum ranking
+		from (select row_number() over (order by cnt desc) rnum, 
+	      		rank.cnt, al.*, ar.artistname as artistname
+	      		from(select count(*) as cnt, albumId from JBLOG 
+	      				WHERE userid = #{userid}
+	         			group by albumId) 
+	         	rank, ARTIST_ALBUM al,ARTIST ar, JB_HAVEALBUM jhal
+	      where al.albumId = rank.albumId and ar.artistId = jhal.artistId
+	      and al.albumId = jhal.albumId)
+	    where rnum &lt; 21
+	</select>
+  
+</mapper>
